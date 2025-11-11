@@ -1,0 +1,138 @@
+import { useState, useEffect } from 'react'
+import { useAuthStore } from '../stores/authStore'
+
+interface Contact {
+    user_id: string
+    room_id: string
+    last_activity?: string
+}
+
+interface ChatSidebarProps {
+    contacts: Contact[]
+    activeRoom: string
+    searchQuery: string
+    onSearchChange: (query: string) => void
+    onContactSelect: (contact: Contact) => void
+    onAddContact: () => void
+}
+
+export default function ChatSidebar({
+    contacts,
+    activeRoom,
+    searchQuery,
+    onSearchChange,
+    onContactSelect,
+    onAddContact
+}: ChatSidebarProps) {
+    const { user } = useAuthStore()
+    const [searchResults, setSearchResults] = useState<Contact[]>([])
+
+    useEffect(() => {
+        if (searchQuery.trim()) {
+            const filtered = contacts.filter(contact =>
+                contact.user_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                contact.room_id.toLowerCase().includes(searchQuery.toLowerCase())
+            )
+            setSearchResults(filtered)
+        } else {
+            setSearchResults([])
+        }
+    }, [searchQuery, contacts])
+
+    const displayContacts = searchQuery.trim() ? searchResults : contacts
+
+    return (
+        <div className="w-1/3 border-r border-gray-300">
+            <div className="p-4 bg-blue-500 text-white">
+                <h1 className="text-xl font-bold">Chat App</h1>
+                <p className="text-sm">Halo, {user?.name}</p>
+            </div>
+
+            {/* Search & Add Contact */}
+            <div className="p-4 border-b border-gray-300">
+                <div className="flex gap-2 mb-3">
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => onSearchChange(e.target.value)}
+                        placeholder="Cari kontak atau room..."
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+                <button
+                    onClick={onAddContact}
+                    className="w-full bg-green-500 text-white py-2 px-3 rounded-md hover:bg-green-600 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
+                >
+                    + Tambah Kontak Baru
+                </button>
+            </div>
+
+            {/* List Contacts */}
+            <div className="overflow-y-auto h-[calc(100vh-200px)]">
+                <div className="p-3 bg-gray-50 border-b border-gray-200">
+                    <div className="flex justify-between items-center">
+                        <h3 className="font-semibold text-gray-700">
+                            {searchQuery.trim() ? 'Hasil Pencarian' : 'Kontak Saya'}
+                        </h3>
+                        <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">
+                            {displayContacts.length}
+                        </span>
+                    </div>
+                    {searchQuery.trim() && (
+                        <p className="text-xs text-gray-500 mt-1">
+                            Menampilkan hasil untuk "{searchQuery}"
+                        </p>
+                    )}
+                </div>
+
+                {displayContacts.length == 0 ? (
+                    <div className="p-4 text-center text-gray-500">
+                        {searchQuery.trim() ? (
+                            <div>
+                                <p>Tidak ditemukan kontak dengan kata kunci "{searchQuery}"</p>
+                                <p className="text-sm mt-2">Coba gunakan kata kunci lain atau tambah kontak baru</p>
+                            </div>
+                        ) : (
+                            <div>
+                                <p>Belum ada kontak</p>
+                                <p className="text-sm mt-2">Klik "Tambah Kontak Baru" untuk memulai chat</p>
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    displayContacts.map((contact) => (
+                        <div
+                            key={contact.room_id}
+                            onClick={() => onContactSelect(contact)}
+                            className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors ${activeRoom == contact.room_id ? 'bg-blue-50 border-blue-200' : ''
+                                }`}
+                        >
+                            <div className="flex items-center">
+                                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
+                                    {contact.user_id.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="ml-3 flex-1">
+                                    <div className="font-semibold text-gray-800">
+                                        User {contact.user_id}
+                                    </div>
+                                    <div className="text-sm text-gray-500">
+                                        Room: {contact.room_id}
+                                    </div>
+                                </div>
+                                {contact.last_activity && (
+                                    <div className="text-xs text-gray-400 text-right">
+                                        <div>{new Date(contact.last_activity).toLocaleDateString('id-ID')}</div>
+                                        <div>{new Date(contact.last_activity).toLocaleTimeString('id-ID', {
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })}</div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    )
+}
