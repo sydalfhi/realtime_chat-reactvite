@@ -59,7 +59,7 @@ export const useChat = () => {
         user_id: user.id,
         room_id: roomId,
         message: message.trim(),
-        parent_id: replyingTo?.id,
+        parent_id: replyingTo?.parent_id,
       };
 
       socket.emit("chat:send", messageData);
@@ -90,11 +90,34 @@ export const useChat = () => {
 
     const handleChatReceive = (data: Message) => {
       console.log("📨 Received message:", data);
-      setMessages((prev) => [...prev, data]);
+
+      // Jika message memiliki parent_id, cari data parentnya di messages sebelumnya
+      if (data.parent_id) {
+        setMessages((prev) => {
+          // Cari parent message dari messages sebelumnya
+          const parentMessage = prev.find((msg) => msg.id === data.parent_id);
+
+          // Jika parent message ditemukan, tambahkan data parent ke message baru
+          if (parentMessage) {
+            const enhancedData = {
+              ...data,
+              parent_message: parentMessage.message,
+              parent_user_id: parentMessage.user_id,
+            };
+            return [...prev, enhancedData];
+          }
+
+          // Jika tidak ditemukan, return data asli
+          return [...prev, data];
+        });
+      } else {
+        // Jika tidak ada parent_id, langsung tambahkan message
+        setMessages((prev) => [...prev, data]);
+      }
+
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 100);
-      // Jangan panggil loadChatRooms di sini - bisa cause loop
     };
 
     const handleChatStarted = (data: any) => {
