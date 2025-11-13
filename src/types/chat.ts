@@ -1,13 +1,23 @@
 // 🔹 TYPE DEFINITIONS
 export interface Message {
-  id?: string;
-  user_id: string;
+  id?: number;
   room_id: string;
+  user_id: string;
   message: string;
+  status: number; // 0 = unread, 1 = read
   created_at: string;
-  parent_id?: string;
+  parent_id?: number;
   parent_message?: string;
   parent_user_id?: string;
+  temporary?: boolean;
+}
+
+export interface UnreadCountData {
+  total_unread: number;
+  unread_per_room: {
+    room_id: string;
+    unread_count: number;
+  }[];
 }
 
 export interface ChatRoom {

@@ -10,7 +10,7 @@ export const formatRoomsToContacts = (
   rooms.forEach((room) => {
     const userIds = room.room_id.split("_");
 
-    if (userIds.length === 2) {
+    if (userIds.length == 2) {
       const otherUserId = userIds.find((id) => id !== currentUserId.toString());
 
       if (otherUserId) {
@@ -44,7 +44,7 @@ export const handleChatError = (data: any) => {
   const config =
     errorConfig[data.type as keyof typeof errorConfig] || errorConfig.default;
 
-  if (config.logLevel === "warn") {
+  if (config.logLevel == "warn") {
     console.warn(`${data.type}:`, data.details);
   } else {
     console.error(`${data.type}:`, data.details);

@@ -1,8 +1,5 @@
-interface Message {
-    id?: string
-    user_id: string
-    message: string
-}
+import type { Message } from "../types/chat"
+
 
 interface ReplyPreviewProps {
     replyingTo: Message | null

@@ -100,9 +100,9 @@ export default function ChatSidebar({
                         )}
                     </div>
                 ) : (
-                    displayContacts.map((contact) => (
+                    displayContacts.map((contact, index) => (
                         <div
-                            key={contact.room_id}
+                            key={index}
                             onClick={() => onContactSelect(contact)}
                             className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors ${activeRoom == contact.room_id ? 'bg-blue-50 border-blue-200' : ''
                                 }`}

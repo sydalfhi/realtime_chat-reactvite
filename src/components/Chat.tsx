@@ -1,4 +1,3 @@
-
 import { useChat } from '../hooks/useChat'
 import { useAuthStore } from '../stores/authStore'
 import ChatSidebar from './ChatSidebar'
@@ -21,42 +20,58 @@ export default function Chat() {
         replyingTo,
         isLoading,
         messagesEndRef,
+        unreadCounts, // ✅ NEW
+        isMarkingRead, // ✅ NEW
+        getUnreadCountForRoom, // ✅ NEW
         setSearchQuery,
         setMessage,
         setShowAddContactModal,
         setReplyingTo,
         loadMessages,
         sendMessage,
-        selectContact
+        selectContact,
+        markAsRead, // ✅ NEW
+        loadUnreadCount // ✅ NEW
     } = useChat()
 
     const handleReply = (message: any) => {
-        message = { 'parent_id': message.id, ...message }
-        console.log('💬 Replying to message:', message)
-        setReplyingTo(message)
+        console.log("🚀 ~ handleReply ~ message:", message)
+        const replyData = {
+            parent_id: message.id,
+            ...message
+        };
+        console.log('💬 Replying to message:', replyData)
+        setReplyingTo(replyData)
     }
-
 
     const cancelReply = () => {
         setReplyingTo(null)
     }
 
+    const handleMarkAsRead = () => {
+        if (roomId) {
+            markAsRead(roomId);
+        }
+    }
+
     const handleLogout = () => {
         console.log('🚪 Logging out...')
-        socket.disconnect() // ✅ Disconnect socket saat logout
+        socket.disconnect()
         logout()
     }
 
-    // 🔹 FIX: Dapatkan user name dengan aman
     const getChatPartnerName = () => {
         if (!roomId || !user) return ''
 
-        const contact = contacts.find(c => c.room_id === roomId)
+        const contact = contacts.find(c => c.room_id == roomId)
         if (contact) return `User ${contact.user_id}`
 
         const otherUserId = roomId.split('_').find(id => id !== user.id)
         return otherUserId ? `User ${otherUserId}` : 'Unknown User'
     }
+
+    // ✅ NEW: Get unread count for current room
+    const currentRoomUnread = getUnreadCountForRoom(roomId);
 
     return (
         <div className="min-h-screen bg-gray-100 p-4">
@@ -74,6 +89,8 @@ export default function Chat() {
                     onSearchChange={setSearchQuery}
                     onContactSelect={selectContact}
                     onAddContact={() => setShowAddContactModal(true)}
+                    unreadCounts={unreadCounts} // ✅ Pass unread counts
+                    getUnreadCountForRoom={getUnreadCountForRoom} // ✅ Pass function
                 />
 
                 {/* Main Chat Area */}
@@ -82,11 +99,20 @@ export default function Chat() {
                     {roomId ? (
                         <div className="p-4 border-b border-gray-300 bg-gray-50">
                             <div className="flex justify-between items-center">
-                                <div>
+                                <div className="flex items-center gap-3">
                                     <h2 className="font-semibold text-gray-800">
                                         Chat dengan {getChatPartnerName()}
                                     </h2>
-                                    <p className="text-sm text-gray-500">Room: {roomId}</p>
+                                    {currentRoomUnread > 0 && (
+                                        <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                                            {currentRoomUnread} unread
+                                        </span>
+                                    )}
+                                    {isMarkingRead && (
+                                        <span className="text-xs text-blue-500">
+                                            Marking as read...
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="flex gap-2">
                                     <button
@@ -96,13 +122,21 @@ export default function Chat() {
                                         Refresh
                                     </button>
                                     <button
+                                        onClick={handleMarkAsRead}
+                                        disabled={isMarkingRead || currentRoomUnread == 0}
+                                        className="text-sm bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 disabled:bg-gray-400"
+                                    >
+                                        {isMarkingRead ? 'Marking...' : 'Mark Read'}
+                                    </button>
+                                    <button
                                         onClick={() => setShowAddContactModal(true)}
-                                        className="text-sm bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
+                                        className="text-sm bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600"
                                     >
                                         + Kontak
                                     </button>
                                 </div>
                             </div>
+                            <p className="text-sm text-gray-500 mt-1">Room: {roomId}</p>
                         </div>
                     ) : (
                         <div className="p-4 border-b border-gray-300 bg-gray-50 text-center text-gray-500">
@@ -116,7 +150,7 @@ export default function Chat() {
                             <div className="text-center text-gray-500 mt-8">
                                 Loading messages...
                             </div>
-                        ) : messages.length === 0 ? (
+                        ) : messages.length == 0 ? (
                             <div className="text-center text-gray-500 mt-8">
                                 {roomId ? 'Belum ada pesan dalam chat ini' : 'Pilih kontak untuk melihat pesan'}
                             </div>
@@ -126,6 +160,7 @@ export default function Chat() {
                                     key={index}
                                     message={msg}
                                     onReply={handleReply}
+                                    currentUserId={user?.id}
                                 />
                             ))
                         )}
@@ -146,7 +181,7 @@ export default function Chat() {
                                 value={message}
                                 onChange={(e) => setMessage(e.target.value)}
                                 onKeyPress={(e) => {
-                                    if (e.key === 'Enter') {
+                                    if (e.key == 'Enter') {
                                         sendMessage()
                                     }
                                 }}
@@ -165,6 +200,13 @@ export default function Chat() {
                     </div>
                 </div>
             </div>
+
+            {/* Total Unread Badge */}
+            {unreadCounts.total_unread > 0 && (
+                <div className="fixed bottom-4 right-4 bg-red-500 text-white px-3 py-2 rounded-full shadow-lg">
+                    Total Unread: {unreadCounts.total_unread}
+                </div>
+            )}
 
             {/* Logout Button */}
             <div className="text-center mt-4">
