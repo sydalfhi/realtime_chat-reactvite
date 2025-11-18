@@ -65,7 +65,7 @@ export const useAuthStore = create<AuthState>()(
           );
 
           const data = await response.json();
-          return data.success === true;
+          return data.success == true;
         } catch (error) {
           console.error("Token verification failed:", error);
           return false;
@@ -164,7 +164,7 @@ export const useAuthStore = create<AuthState>()(
           );
 
           const data = await response.json();
-          return data.success === true;
+          return data.success == true;
         } catch (error) {
           console.error("Registration failed:", error);
           return false;
