@@ -44,6 +44,8 @@ const FILE_CONFIG = {
 export default function Chat() {
     const { user, logout } = useAuthStore()
     const [isSendingVoice, setIsSendingVoice] = useState(false)
+    const [showVoiceRecorder, setShowVoiceRecorder] = useState(false)
+    const [showSidebar, setShowSidebar] = useState(false) // ✅ State untuk sidebar mobile
 
     // State untuk preview file yang akan dikirim
     const [filePreview, setFilePreview] = useState<{
@@ -68,7 +70,6 @@ export default function Chat() {
         unreadCounts,
         isMarkingRead,
         getUnreadCountForRoom,
-        setSearchQuery,
         setMessage,
         setShowAddContactModal,
         setReplyingTo,
@@ -83,30 +84,91 @@ export default function Chat() {
     useEffect(() => {
         const handleEscKey = (event: KeyboardEvent) => {
             if (event.key === 'Escape' && roomId) {
-                // console.log('ESC ditekan, menutup chat...')
                 selectContact(null)
                 setMessage('')
                 if (filePreview) removeFilePreview()
                 if (replyingTo) cancelReply()
+                setShowVoiceRecorder(false)
+                setShowSidebar(false) // ✅ Juga tutup sidebar di mobile
             }
         }
 
         document.addEventListener('keydown', handleEscKey)
-        // console.log('Event listener ESC ditambahkan')
-
         return () => {
             document.removeEventListener('keydown', handleEscKey)
-            // console.log('Event listener ESC dihapus')
         }
     }, [roomId, filePreview, replyingTo, selectContact, setMessage])
 
-    // === Tutup chat secara manual (tombol X) ===
-    const closeChat = () => {
-        // console.log('Menutup chat secara manual')
-        selectContact(null)
-        setMessage('')
-        if (filePreview) removeFilePreview()
-        if (replyingTo) cancelReply()
+    // === Auto close sidebar ketika memilih kontak di mobile ===
+    useEffect(() => {
+        if (roomId && window.innerWidth < 768) {
+            setShowSidebar(false)
+        }
+    }, [roomId])
+
+    // === Fungsi untuk toggle sidebar di mobile ===
+    const toggleSidebar = () => {
+        setShowSidebar(!showSidebar)
+    }
+
+    // === Fungsi untuk select contact dengan auto close sidebar di mobile ===
+    const handleContactSelect = (contact: any) => {
+        selectContact(contact)
+        if (window.innerWidth < 768) {
+            setShowSidebar(false)
+        }
+    }
+
+    // === Fungsi untuk toggle voice recorder ===
+    const toggleVoiceRecorder = () => {
+        setShowVoiceRecorder(!showVoiceRecorder)
+        if (showVoiceRecorder) {
+            setTimeout(() => {
+                const textInput = document.querySelector('input[type="text"]') as HTMLInputElement
+                textInput?.focus()
+            }, 100)
+        }
+    }
+
+    // === Fungsi untuk cancel voice recording ===
+    const handleCancelVoice = () => {
+        setShowVoiceRecorder(false)
+    }
+
+    // === Kirim pesan suara ===
+    const handleSendVoice = async (audioData: {
+        file: string
+        file_name: string
+        file_type: string
+        transcript: string
+    }) => {
+        if (!roomId) return
+
+        setIsSendingVoice(true)
+        try {
+            console.log("🎤 Sending voice message:", {
+                fileName: audioData.file_name,
+                fileType: audioData.file_type,
+                transcript: audioData.transcript
+            })
+
+            const voiceMessageData = {
+                file: audioData.file,
+                file_name: audioData.file_name,
+                file_type: audioData.file_type,
+                message_type: "audio"
+            }
+
+            await sendMessage(audioData.transcript, voiceMessageData)
+            console.log("✅ Voice message sent successfully")
+            setShowVoiceRecorder(false)
+
+        } catch (error) {
+            console.error('Error sending voice message:', error)
+            alert('Gagal mengirim pesan suara')
+        } finally {
+            setIsSendingVoice(false)
+        }
     }
 
     // === Pilih file dari komputer ===
@@ -129,7 +191,6 @@ export default function Chat() {
         const fileUrl = URL.createObjectURL(file)
         setFilePreview({ file, type: fileType, url: fileUrl })
 
-        // Reset input agar bisa pilih file yang sama lagi
         if (fileInputRef.current) fileInputRef.current.value = ''
     }
 
@@ -155,11 +216,7 @@ export default function Chat() {
                 file_type: filePreview.file.type
             }
 
-            // console.log('Mengirim file:', filePreview.file.name, filePreview.file.size)
-
             await sendMessage(message.trim(), fileData)
-
-            // Bersihkan setelah berhasil terkirim
             setFilePreview(null)
             setMessage('')
             setReplyingTo(null)
@@ -171,14 +228,14 @@ export default function Chat() {
         }
     }
 
-    // === Konversi file menjadi base64 (tanpa prefix data:...) ===
+    // === Konversi file menjadi base64 ===
     const fileToBase64 = (file: File): Promise<string> => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader()
             reader.readAsDataURL(file)
             reader.onload = () => {
                 const result = reader.result as string
-                resolve(result.split(',')[1]) // Ambil hanya bagian base64
+                resolve(result.split(',')[1])
             }
             reader.onerror = reject
         })
@@ -204,7 +261,6 @@ export default function Chat() {
 
     // === Balas pesan ===
     const handleReply = (msg: any) => {
-        // console.log('Membalas pesan:', msg.id)
         setReplyingTo(msg)
     }
 
@@ -213,17 +269,9 @@ export default function Chat() {
         setReplyingTo(null)
     }
 
-    // === Tandai semua pesan di room ini sudah dibaca ===
-    const handleMarkAsRead = () => {
-        if (roomId) markAsRead(roomId)
-    }
 
     // === Logout dari aplikasi ===
-    const handleLogout = () => {
-        // console.log('Logout...')
-        socket.disconnect()
-        logout()
-    }
+
 
     // === Ambil nama lawan chat ===
     const getChatPartnerName = () => {
@@ -239,116 +287,94 @@ export default function Chat() {
     // Jumlah pesan belum dibaca di room aktif
     const currentRoomUnread = getUnreadCountForRoom(roomId)
 
-    // === Kirim pesan suara dari VoiceRecorder ===
-    const handleSendVoice = async (audioData: {
-        file: string
-        file_name: string
-        file_type: string
-        transcript: string
-    }) => {
-        if (!roomId) return
-
-        setIsSendingVoice(true)
-        try {
-            // console.log('Mengirim pesan suara...')
-
-            const voiceData = {
-                file: audioData.file,
-                file_name: audioData.file_name,
-                file_type: audioData.file_type
-            }
-
-            await sendMessage(audioData.transcript || '(Pesan suara)', voiceData)
-            // console.log('Pesan suara terkirim')
-        } catch (error) {
-            console.error('Gagal mengirim pesan suara:', error)
-            alert('Gagal mengirim pesan suara')
-        } finally {
-            setIsSendingVoice(false)
-        }
-    }
-
     return (
-        <div className="min-h-screen bg-gray-100 p-4">
+        <div className=" bg-white ">
             <AddContactModal
                 isOpen={showAddContactModal}
                 onClose={() => setShowAddContactModal(false)}
             />
 
-            <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-md flex">
+            {/* Mobile Header dengan Hamburger Menu */}
+            <div className="md:hidden mb-4 bg-white rounded-lg shadow-md p-4 flex items-center justify-between">
+                <button
+                    onClick={toggleSidebar}
+                    className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                    <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+                <h1 className="text-xl font-bold text-gray-800">Chat App</h1>
+                <div className="w-6 h-6"></div> {/* Spacer untuk balance */}
+            </div>
+
+            <div className="w-full mx-auto bg-white rounded-lg shadow-md flex relative min-h-[96dvh]">
                 {/* Sidebar Daftar Kontak */}
-                <ChatSidebar
-                    contacts={contacts}
-                    activeRoom={activeRoom}
-                    searchQuery={searchQuery}
-                    onSearchChange={setSearchQuery}
-                    onContactSelect={selectContact}
-                    onAddContact={() => setShowAddContactModal(true)}
-                    unreadCounts={unreadCounts}
-                    getUnreadCountForRoom={getUnreadCountForRoom}
-                />
+                <div className={`
+                    ${showSidebar ? 'translate-x-0' : '-translate-x-full'} 
+                    md:translate-x-0 md:relative
+                    fixed inset-0 z-40 md:z-auto
+                    w-80 md:w-1/3
+                    transition-transform duration-300 ease-in-out
+                    bg-white md:bg-transparent
+                `}>
+                    <ChatSidebar
+                        contacts={contacts}
+                        activeRoom={activeRoom}
+                        searchQuery={searchQuery}
+                        onSearchChange={() => { }}
+                        onContactSelect={handleContactSelect} // ✅ Gunakan fungsi baru
+                        onAddContact={() => setShowAddContactModal(true)}
+                        unreadCounts={unreadCounts}
+                        getUnreadCountForRoom={getUnreadCountForRoom}
+                        onCloseSidebar={() => setShowSidebar(false)} // ✅ Props untuk close sidebar
+                    />
+                </div>
+
+                {/* Backdrop untuk mobile */}
+                {showSidebar && (
+                    <div
+                        className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+                        onClick={() => setShowSidebar(false)}
+                    />
+                )}
 
                 {/* Area Chat Utama */}
-                <div className="w-2/3 flex flex-col">
+                <div className="w-full md:w-2/3 flex flex-col">
                     {/* Header Chat */}
                     {roomId ? (
                         <div className="p-4 border-b border-gray-300 bg-gray-50">
                             <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-3">
-                                    <h2 className="font-semibold text-gray-800">
-                                        Chat dengan {getChatPartnerName()}
-                                    </h2>
+
+                                    <div>
+                                        <h2 className="font-semibold text-gray-800">
+                                            Chat dengan {getChatPartnerName()}
+                                        </h2>
+                                        <p className="text-sm text-gray-500">
+                                            Room: {roomId}
+                                        </p>
+                                    </div>
                                     {currentRoomUnread > 0 && (
                                         <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                                            {currentRoomUnread} belum dibaca
+                                            {currentRoomUnread} unread
                                         </span>
                                     )}
                                     {isMarkingRead && (
                                         <span className="text-xs text-blue-500">
-                                            Menandai sebagai dibaca...
+                                            Marking as read...
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => loadMessages(roomId)}
-                                        className="text-sm bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
-                                    >
-                                        Refresh
-                                    </button>
-                                    <button
-                                        onClick={handleMarkAsRead}
-                                        disabled={isMarkingRead || currentRoomUnread === 0}
-                                        className="text-sm bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 disabled:bg-gray-400"
-                                    >
-                                        {isMarkingRead ? 'Memproses...' : 'Tandai Dibaca'}
-                                    </button>
-                                    <button
-                                        onClick={() => setShowAddContactModal(true)}
-                                        className="text-sm bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600"
-                                    >
-                                        + Kontak
-                                    </button>
-                                    <button
-                                        onClick={closeChat}
-                                        className="text-sm bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600"
-                                        title="Tutup chat (ESC)"
-                                    >
-                                        ✕ Tutup
-                                    </button>
-                                </div>
+
                             </div>
-                            <p className="text-sm text-gray-500 mt-1">
-                                Room ID: {roomId}
-                                <span className="ml-2 text-xs text-blue-500">
-                                    (Tekan ESC untuk menutup)
-                                </span>
-                            </p>
+
                         </div>
                     ) : (
-                        <div className="p-4 border-b border-gray-300 bg-gray-50 text-center text-gray-500">
-                            {searchQuery.trim() ? 'Pilih kontak dari hasil pencarian' : 'Pilih kontak untuk memulai chat'}
-                        </div>
+                        <></>
+                        // <div className="p-4 border-b border-gray-300 bg-gray-50 text-center text-gray-500">
+                        //     {searchQuery.trim() ? 'Pilih kontak dari hasil pencarian' : 'Pilih kontak untuk memulai percakapan'}
+                        // </div>
                     )}
 
                     {/* Daftar Pesan */}
@@ -356,8 +382,35 @@ export default function Chat() {
                         {isLoading ? (
                             <div className="text-center text-gray-500 mt-8">Memuat pesan...</div>
                         ) : messages.length === 0 ? (
-                            <div className="text-center text-gray-500 mt-8">
-                                {roomId ? 'Belum ada pesan di chat ini' : 'Pilih kontak untuk melihat pesan'}
+                            <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                                <div className="flex flex-col items-center justify-center space-y-4">
+                                    {/* Icon Surat */}
+                                    <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center">
+                                        <svg
+                                            className="w-10 h-10 text-gray-400"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={1.5}
+                                                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                            />
+                                        </svg>
+                                    </div>
+
+                                    {/* Teks */}
+                                    <div className="text-center">
+                                        <p className="text-lg font-medium text-gray-500 mb-1">
+                                            Pilih kontak untuk melihat pesan
+                                        </p>
+                                        <p className="text-sm text-gray-400">
+                                            Mulai percakapan dengan memilih kontak dari daftar
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         ) : (
                             messages.map((msg, index) => (
@@ -374,29 +427,38 @@ export default function Chat() {
 
                     {/* Input Chat - Hanya muncul jika ada room aktif */}
                     {roomId && (
-                        <div className="p-4 border-t border-gray-300 bg-white">
-                            {/* Preview File */}
+                        <>
+                            {/* File Preview */}
                             {filePreview && (
                                 <div className="mx-4 mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             {filePreview.type === 'images' ? (
-                                                <img src={filePreview.url} alt="Preview" className="w-12 h-12 object-cover rounded" />
+                                                <img
+                                                    src={filePreview.url}
+                                                    alt="Preview"
+                                                    className="w-12 h-12 object-cover rounded-lg"
+                                                />
                                             ) : (
-                                                <div className="w-12 h-12 bg-blue-100 rounded flex items-center justify-center">
+                                                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                                                     <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                     </svg>
                                                 </div>
                                             )}
                                             <div>
-                                                <p className="text-sm font-medium text-gray-800">{filePreview.file.name}</p>
+                                                <p className="text-sm font-medium text-gray-800">
+                                                    {filePreview.file.name}
+                                                </p>
                                                 <p className="text-xs text-gray-500">
                                                     {(filePreview.file.size / 1024 / 1024).toFixed(2)} MB
                                                 </p>
                                             </div>
                                         </div>
-                                        <button onClick={removeFilePreview} className="text-gray-400 hover:text-red-500">
+                                        <button
+                                            onClick={removeFilePreview}
+                                            className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                                        >
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                             </svg>
@@ -408,84 +470,154 @@ export default function Chat() {
                             {/* Preview Balasan */}
                             <ReplyPreview replyingTo={replyingTo} onCancel={cancelReply} />
 
-                            {/* Tombol Lampir & Input */}
-                            <div className="flex gap-2 mt-3">
-                                {/* Tombol Lampirkan File */}
-                                <div className="relative">
-                                    <input
-                                        type="file"
-                                        ref={fileInputRef}
-                                        onChange={handleFileSelect}
-                                        accept={Object.values(FILE_CONFIG).flatMap(c => c.types).join(',')}
-                                        className="hidden"
-                                        disabled={isUploading || isSendingVoice}
-                                    />
+                            {/* Input Area */}
+                            <div className="p-4 border-t border-gray-200 bg-white">
+
+                                {/* Voice Recorder - Tampil di atas input area */}
+                                {showVoiceRecorder && (
+                                    <div className="mb-4">
+                                        <VoiceRecorder
+                                            onSendVoice={handleSendVoice}
+                                            onCancel={handleCancelVoice}
+                                            disabled={isUploading || !roomId}
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Main Input Area - selalu tampil */}
+                                <div className="flex gap-2">
+                                    {/* File Attachment */}
+                                    <div className="relative">
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            onChange={handleFileSelect}
+                                            accept={Object.values(FILE_CONFIG).flatMap(c => c.types).join(',')}
+                                            className="hidden"
+                                            disabled={isUploading || isSendingVoice || showVoiceRecorder}
+                                        />
+                                        <button
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={isUploading || isSendingVoice || showVoiceRecorder}
+                                            className="p-3 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-xl transition-colors disabled:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            title="Lampirkan file"
+                                        >
+                                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    {/* Text Input - disembunyikan ketika voice recorder aktif */}
+                                    {!showVoiceRecorder && (
+                                        <input
+                                            type="text"
+                                            value={message}
+                                            onChange={(e) => setMessage(e.target.value)}
+                                            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                                            placeholder={replyingTo ? 'Ketik balasan...' : 'Ketik pesan...'}
+                                            className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                                            disabled={isUploading || isSendingVoice}
+                                            ref={(input) => {
+                                                if (input && !showVoiceRecorder) {
+                                                    setTimeout(() => input.focus(), 100)
+                                                }
+                                            }}
+                                        />
+                                    )}
+
+                                    {/* Voice Recorder Toggle Button */}
                                     <button
-                                        onClick={() => fileInputRef.current?.click()}
-                                        disabled={isUploading || isSendingVoice}
-                                        className="bg-gray-500 text-white p-2 rounded-md hover:bg-gray-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                                        title="Lampirkan file"
+                                        onClick={toggleVoiceRecorder}
+                                        disabled={isUploading || isSendingVoice || !roomId}
+                                        className={`p-3 rounded-xl transition-colors ${showVoiceRecorder
+                                            ? 'bg-red-500 hover:bg-red-600 text-white'
+                                            : 'bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-600'
+                                            } disabled:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed`}
+                                        title={showVoiceRecorder ? "Tutup perekam suara" : "Rekam pesan suara"}
                                     >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                                        </svg>
+                                        {showVoiceRecorder ? (
+                                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        ) : (
+                                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                                                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+                                            </svg>
+                                        )}
                                     </button>
+
+                                    {/* Send Button - disembunyikan ketika voice recorder aktif */}
+                                    {!showVoiceRecorder && (
+                                        <button
+                                            onClick={handleSendMessage}
+                                            disabled={(!message.trim() && !filePreview) || isUploading || isSendingVoice}
+                                            className="px-6 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium flex items-center gap-2 min-w-[100px] justify-center"
+                                        >
+                                            {isUploading ? (
+                                                <>
+                                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                    <span className="hidden sm:inline">Upload</span>
+                                                </>
+                                            ) : filePreview ? (
+                                                <>
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                    </svg>
+                                                    <span className="hidden sm:inline">Kirim</span>
+                                                </>
+                                            ) : replyingTo ? (
+                                                <>
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                                    </svg>
+                                                    <span className="hidden sm:inline">Balas</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                                    </svg>
+                                                    <span className="hidden sm:inline">Kirim</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
                                 </div>
 
-                                {/* Rekam Suara */}
-                                <VoiceRecorder onSendVoice={handleSendVoice} disabled={isUploading || !roomId} />
-
-                                {/* Input Teks */}
-                                <input
-                                    type="text"
-                                    value={message}
-                                    onChange={(e) => setMessage(e.target.value)}
-                                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                                    placeholder={replyingTo ? 'Balas pesan...' : 'Ketik pesan...'}
-                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    disabled={isUploading || isSendingVoice}
-                                />
-
-                                {/* Tombol Kirim */}
-                                <button
-                                    onClick={handleSendMessage}
-                                    disabled={(!message.trim() && !filePreview) || isUploading || isSendingVoice}
-                                    className="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-                                >
-                                    {isUploading ? (
-                                        <>Uploading...</>
-                                    ) : isSendingVoice ? (
-                                        'Mengirim Suara...'
-                                    ) : filePreview ? (
-                                        'Kirim File'
-                                    ) : replyingTo ? (
-                                        'Balas'
-                                    ) : (
-                                        'Kirim'
-                                    )}
-                                </button>
+                                {/* File Type Hints - hanya ketika tidak ada voice recorder */}
+                                {!showVoiceRecorder && (
+                                    <div className="mt-2 text-xs text-gray-500 flex flex-wrap gap-3">
+                                        <span className="flex items-center gap-1">
+                                            <span>📷</span>
+                                            <span>Gambar (5MB)</span>
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                            <span>📄</span>
+                                            <span>Dokumen (10MB)</span>
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                            <span>🎵</span>
+                                            <span>Media (25MB)</span>
+                                        </span>
+                                    </div>
+                                )}
                             </div>
-                        </div>
+                        </>
                     )}
                 </div>
             </div>
 
             {/* Badge Total Pesan Belum Dibaca */}
-            {unreadCounts.total_unread > 0 && (
+            {/* {unreadCounts.total_unread > 0 && (
                 <div className="fixed bottom-4 right-4 bg-red-500 text-white px-3 py-2 rounded-full shadow-lg z-50">
                     Total Belum Dibaca: {unreadCounts.total_unread}
                 </div>
-            )}
+            )} */}
 
             {/* Tombol Logout */}
-            <div className="text-center mt-6">
-                <button
-                    onClick={handleLogout}
-                    className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-md transition-colors"
-                >
-                    Logout
-                </button>
-            </div>
+
         </div>
     )
 }

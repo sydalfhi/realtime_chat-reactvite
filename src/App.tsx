@@ -1,9 +1,9 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
-import Chat from './components/Chat'
 import LoginPage from './pages/login'
 import RegisterPage from './pages/register'
 import SpeechRecognition from 'react-speech-recognition';
+import ChatPages from './pages/chat'
 
 
 function App() {
@@ -18,7 +18,7 @@ function App() {
           {/* Route untuk halaman yang membutuhkan autentikasi */}
           <Route
             path="/chat"
-            element={isAuthenticated ? <Chat /> : <Navigate to="/login" replace />}
+            element={isAuthenticated ? <ChatPages /> : <Navigate to="/login" replace />}
           />
 
           {/* Route untuk halaman auth (jika sudah login, redirect ke chat) */}

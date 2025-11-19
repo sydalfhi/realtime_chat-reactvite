@@ -1,5 +1,7 @@
+// src/components/ChatSidebar.tsx
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '../stores/authStore'
+import { socket } from '../utils/socket'
 
 interface Contact {
     user_id: string
@@ -14,6 +16,9 @@ interface ChatSidebarProps {
     onSearchChange: (query: string) => void
     onContactSelect: (contact: Contact) => void
     onAddContact: () => void
+    unreadCounts?: any
+    getUnreadCountForRoom?: any
+    onCloseSidebar?: () => void // ✅ New prop untuk close sidebar di mobile
 }
 
 export default function ChatSidebar({
@@ -22,9 +27,12 @@ export default function ChatSidebar({
     searchQuery,
     onSearchChange,
     onContactSelect,
-    onAddContact
+    onAddContact,
+    unreadCounts,
+    getUnreadCountForRoom,
+    onCloseSidebar
 }: ChatSidebarProps) {
-    const { user } = useAuthStore()
+    const { user, logout } = useAuthStore()
     const [searchResults, setSearchResults] = useState<Contact[]>([])
 
     useEffect(() => {
@@ -40,12 +48,42 @@ export default function ChatSidebar({
     }, [searchQuery, contacts])
 
     const displayContacts = searchQuery.trim() ? searchResults : contacts
-
+    const handleLogout = () => {
+        socket.disconnect()
+        logout()
+    }
     return (
-        <div className="w-1/3 border-r border-gray-300">
-            <div className="p-4 bg-blue-500 text-white">
-                <h1 className="text-xl font-bold">Chat App</h1>
-                <p className="text-sm">Halo, {user?.name}</p>
+        <div className="w-full h-full border-r border-gray-300 bg-white flex flex-col">
+            {/* Header dengan Close Button untuk Mobile */}
+            <div className="p-4 bg-blue-500 text-white relative">
+                <div className="flex items-center justify-between">
+                    <div className='w-full'>
+                        <h1 className="text-xl font-bold">Chat App</h1>
+                        <div className='flex justify-between items-center w-full '>
+
+                            <p className="text-sm">Halo, {user?.name}</p>
+                            <div>
+                                <div className=" ">
+                                    <button
+                                        onClick={handleLogout}
+                                        className="bg-red-500 hover:bg-red-600 text-white text-sm  px-2 py-1 rounded-md transition-colors"
+                                    >
+                                        Logout
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {/* Close Button untuk Mobile */}
+                    <button
+                        onClick={onCloseSidebar}
+                        className="md:hidden p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             {/* Search & Add Contact */}
@@ -68,7 +106,7 @@ export default function ChatSidebar({
             </div>
 
             {/* List Contacts */}
-            <div className="overflow-y-auto h-[calc(100vh-200px)]">
+            <div className="flex-1 overflow-y-auto">
                 <div className="p-3 bg-gray-50 border-b border-gray-200">
                     <div className="flex justify-between items-center">
                         <h3 className="font-semibold text-gray-700">
@@ -85,7 +123,7 @@ export default function ChatSidebar({
                     )}
                 </div>
 
-                {displayContacts.length == 0 ? (
+                {displayContacts.length === 0 ? (
                     <div className="p-4 text-center text-gray-500">
                         {searchQuery.trim() ? (
                             <div>
@@ -104,7 +142,7 @@ export default function ChatSidebar({
                         <div
                             key={index}
                             onClick={() => onContactSelect(contact)}
-                            className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors ${activeRoom == contact.room_id ? 'bg-blue-50 border-blue-200' : ''
+                            className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors ${activeRoom === contact.room_id ? 'bg-blue-50 border-blue-200' : ''
                                 }`}
                         >
                             <div className="flex items-center">
