@@ -11,7 +11,7 @@ interface MessageBubbleProps {
     currentUserId?: string
 }
 
-export default function MessageBubble({ message, onReply, currentUserId }: MessageBubbleProps) {
+export default function MessageBubble({ message, onReply, currentUserId, activeContact }: MessageBubbleProps) {
     const { user } = useAuthStore()
     const [showOptions, setShowOptions] = useState(false)
     const [messageStatus, setMessageStatus] = useState(message.status || 0)
@@ -129,8 +129,8 @@ export default function MessageBubble({ message, onReply, currentUserId }: Messa
                         )}
                         {message.message && message.message !== 'Mengirim gambar' && (
                             <div className={`text-sm px-3 py-2 rounded-lg backdrop-blur-sm ${isOwnMessage
-                                    ? 'text-white/90 bg-white/10'
-                                    : 'text-gray-700 bg-gray-100'
+                                ? 'text-white/90 bg-white/10'
+                                : 'text-gray-700 bg-gray-100'
                                 }`}>
                                 {message.message}
                             </div>
@@ -147,8 +147,8 @@ export default function MessageBubble({ message, onReply, currentUserId }: Messa
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className={`flex items-center gap-4 p-4 rounded-xl transition-all duration-200 backdrop-blur-sm border ${isOwnMessage
-                                        ? 'bg-white/10 hover:bg-white/15 border-white/20 text-white'
-                                        : 'bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-800'
+                                    ? 'bg-white/10 hover:bg-white/15 border-white/20 text-white'
+                                    : 'bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-800'
                                     }`}
                             >
                                 <div className={`flex-shrink-0 p-3 rounded-lg ${isOwnMessage ? 'bg-white/10' : 'bg-white'
@@ -178,8 +178,8 @@ export default function MessageBubble({ message, onReply, currentUserId }: Messa
                         )}
                         {message.message && message.message !== 'Mengirim dokumen' && (
                             <div className={`text-sm px-3 py-2 rounded-lg backdrop-blur-sm ${isOwnMessage
-                                    ? 'text-white/90 bg-white/10'
-                                    : 'text-gray-700 bg-gray-100'
+                                ? 'text-white/90 bg-white/10'
+                                : 'text-gray-700 bg-gray-100'
                                 }`}>
                                 {message.message}
                             </div>
@@ -208,8 +208,8 @@ export default function MessageBubble({ message, onReply, currentUserId }: Messa
                         )}
                         {message.message && message.message !== 'Mengirim video' && (
                             <div className={`text-sm px-3 py-2 rounded-lg backdrop-blur-sm ${isOwnMessage
-                                    ? 'text-white/90 bg-white/10'
-                                    : 'text-gray-700 bg-gray-100'
+                                ? 'text-white/90 bg-white/10'
+                                : 'text-gray-700 bg-gray-100'
                                 }`}>
                                 {message.message}
                             </div>
@@ -237,8 +237,8 @@ export default function MessageBubble({ message, onReply, currentUserId }: Messa
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className={`flex items-center gap-4 p-4 rounded-xl transition-all duration-200 backdrop-blur-sm border ${isOwnMessage
-                                        ? 'bg-white/10 hover:bg-white/15 border-white/20 text-white'
-                                        : 'bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-800'
+                                    ? 'bg-white/10 hover:bg-white/15 border-white/20 text-white'
+                                    : 'bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-800'
                                     }`}
                             >
                                 <div className={`flex-shrink-0 p-3 rounded-lg ${isOwnMessage ? 'bg-white/10' : 'bg-white'
@@ -268,8 +268,8 @@ export default function MessageBubble({ message, onReply, currentUserId }: Messa
                         )}
                         {message.message && message.message !== 'Mengirim file' && (
                             <div className={`text-sm px-3 py-2 rounded-lg backdrop-blur-sm ${isOwnMessage
-                                    ? 'text-white/90 bg-white/10'
-                                    : 'text-gray-700 bg-gray-100'
+                                ? 'text-white/90 bg-white/10'
+                                : 'text-gray-700 bg-gray-100'
                                 }`}>
                                 {message.message}
                             </div>
@@ -318,18 +318,18 @@ export default function MessageBubble({ message, onReply, currentUserId }: Messa
 
                 {/* Message Bubble */}
                 <div
-                    className={`relative px-6 py-4 rounded-3xl backdrop-blur-sm transition-all duration-300 ${isOwnMessage
-                            ? hasError
-                                ? 'bg-gradient-to-br from-red-500 to-red-600 text-white shadow-lg'
-                                : 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg'
-                            : 'bg-gradient-to-br from-white to-gray-50 text-gray-800 shadow-md border border-gray-200'
+                    className={`relative px-2 py-2 min-w-[10dvw] rounded-sm backdrop-blur-sm transition-all duration-300 ${isOwnMessage
+                        ? hasError
+                            ? 'bg-gradient-to-br from-red-500 to-red-600 text-white shadow-lg'
+                            : 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg'
+                        : 'bg-gradient-to-br from-white to-gray-50 text-gray-800 shadow-md border border-gray-200'
                         } ${isSending ? 'opacity-80' : 'hover:shadow-xl'}`}
                 >
                     {/* Error Message */}
                     {hasError && (
                         <div className={`flex items-center gap-2 mb-3 text-xs px-3 py-2 rounded-lg ${isOwnMessage
-                                ? 'text-yellow-200 bg-yellow-500/20'
-                                : 'text-yellow-700 bg-yellow-100'
+                            ? 'text-yellow-200 bg-yellow-500/20'
+                            : 'text-yellow-700 bg-yellow-100'
                             }`}>
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -341,31 +341,71 @@ export default function MessageBubble({ message, onReply, currentUserId }: Messa
                     {/* Replied Message Preview */}
                     {message.parent_message && (
                         <div
-                            className={`mb-4 p-3 rounded-xl text-xs border-l-4 ${isOwnMessage
-                                    ? 'bg-blue-400/30 border-blue-300 text-white/80'
-                                    : 'bg-gray-100 border-gray-400 text-gray-700'
+                            className={`mb-2 p-3 rounded-lg border-l-4 ${isOwnMessage
+                                ? 'bg-blue-50 border-blue-400 text-blue-800'
+                                : 'bg-gray-50 border-gray-400 text-gray-700'
                                 }`}
                         >
-                            <div className="font-semibold mb-1">
-                                {message.parent_user_id == (currentUserId || user?.id)
-                                    ? 'Anda'
-                                    : `User ${message.parent_user_id}`
-                                }
+                            <div className="flex items-center gap-2 mb-1">
+                                <div className="w-2 h-2 bg-current rounded-full"></div>
+                                <div className="font-semibold text-xs">
+                                    {message.parent_user_id == user?.id
+                                        ? 'Anda'
+                                        : message.parent_user_id == activeContact.user_id
+                                            ? activeContact.name
+                                            : `${message.user_id}`
+                                    }
+
+                                </div>
                             </div>
-                            <div className="truncate">
-                                {message.parent_message_type == 'image' ? '📷 Gambar' :
-                                    message.parent_message_type == 'document' ? '📄 Dokumen' :
-                                        message.parent_message_type == 'video' ? '🎥 Video' :
-                                            message.parent_message_type == 'audio' ? '🎵 Audio' :
-                                                message.parent_message}
+                            <div className="text-sm truncate">
+                                {message.parent_message_type == 'image' ? (
+                                    <span className="flex items-center gap-1">
+                                        <span>📷</span>
+                                        <span>Gambar</span>
+                                    </span>
+                                ) : message.parent_message_type == 'document' ? (
+                                    <span className="flex items-center gap-1">
+                                        <span>📄</span>
+                                        <span>Dokumen</span>
+                                    </span>
+                                ) : message.parent_message_type == 'video' ? (
+                                    <span className="flex items-center gap-1">
+                                        <span>🎥</span>
+                                        <span>Video</span>
+                                    </span>
+                                ) : message.parent_message_type == 'audio' ? (
+                                    <span className="flex items-center gap-1">
+                                        <span>🎵</span>
+                                        <span>Pesan Suara</span>
+                                    </span>
+                                ) : (
+                                    <span className="italic">"{message.parent_message}"</span>
+                                )}
                             </div>
                         </div>
                     )}
 
                     {/* Sender Name */}
                     {!isOwnMessage && (
-                        <div className="font-semibold text-sm text-gray-700 mb-2">
-                            User {message.user_id}
+                        <div className="flex items-center gap-3 mb-3">
+                            {/* Avatar untuk active contact */}
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 bg-gray-200 relative">
+                                <img
+                                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${activeContact.user_id}&radius=50`}
+                                    alt={activeContact.name}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                    }}
+                                />
+
+                            </div>
+
+                            <div className="font-semibold text-sm text-gray-700">
+                                {activeContact.name}
+                            </div>
                         </div>
                     )}
 
@@ -375,8 +415,8 @@ export default function MessageBubble({ message, onReply, currentUserId }: Messa
                     {/* Message Footer */}
                     <div
                         className={`flex justify-between items-center mt-3 pt-2 border-t ${isOwnMessage
-                                ? 'border-blue-400/30 text-blue-100'
-                                : 'border-gray-300/30 text-gray-500'
+                            ? 'border-blue-400/30 text-blue-100'
+                            : 'border-gray-300/30 text-gray-500'
                             }`}
                     >
                         <div className="text-xs">

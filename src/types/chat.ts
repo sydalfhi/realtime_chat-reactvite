@@ -23,13 +23,27 @@ export interface UnreadCountData {
 export interface ChatRoom {
   room_id: string;
   is_group: boolean;
-  created_at: string;
+  room_created: string; // waktu dibuat room
+  email?: string; // untuk private chat
+  full_name?: string; // nama lawan atau group
+  unread: number; // jumlah pesan belum dibaca
+  last_message?: string; // isi last message
+  last_message_type?: string; // tipe last message ('text', 'image', 'document', dll)
+  last_message_created_at?: string; // waktu last message
+  last_message_user_id?: string; // pengirim last message
+  last_message_status?: number; // status last message
 }
 
 export interface Contact {
-  user_id: string;
+  user_id: string | null; // null untuk group chat
   room_id: string;
-  last_activity?: string;
+  name: string | null; // full_name
+  email: string | null; // email lawan (private)
+  unread: number; // jumlah pesan belum dibaca
+  last_activity: string | null; // waktu last message atau room_created
+  is_group: boolean;
+  last_message?: string; // isi last message
+  last_message_type?: string; // tipe last message
 }
 
 export interface ChatState {

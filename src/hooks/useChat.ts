@@ -32,14 +32,6 @@ export const useChat = () => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Load Unread Count
-  const loadUnreadCount = useCallback(() => {
-    if (user) {
-      // console.log("Loading unread counts...");
-      socket.emit("chat:get-unread-count", { user_id: user.id });
-    }
-  }, [user]);
-
   // Mark as Read Function
   const markAsRead = useCallback(
     (roomId: string) => {
@@ -63,9 +55,8 @@ export const useChat = () => {
     if (user) {
       // console.log("Loading chat rooms...");
       socket.emit("chat:get-rooms", { user_id: user.id });
-      loadUnreadCount();
     }
-  }, [user, loadUnreadCount]);
+  }, [user]);
 
   // Load Messages
   const loadMessages = useCallback(
@@ -96,13 +87,6 @@ export const useChat = () => {
       fileData?: { file: string; file_name: string; file_type: string }
     ) => {
       if (user && roomId && (text?.trim() || fileData)) {
-        // console.log("Sending message with file:", {
-        //   roomId,
-        //   text,
-        //   hasFile: !!fileData,
-        //   fileType: fileData?.file_type,
-        // });
-
         let messageType = "text";
         if (fileData) {
           if (fileData.file_type.startsWith("image/")) {
@@ -130,12 +114,6 @@ export const useChat = () => {
             message_type: messageType,
           }),
         };
-
-        // console.log("Sending message data:", {
-        //   ...messageData,
-        //   file: fileData ? `base64(${fileData.file.length} chars)` : "none",
-        //   message_type: messageType,
-        // });
 
         socket.emit("chat:send", messageData);
         setMessage("");
@@ -385,7 +363,7 @@ export const useChat = () => {
     };
 
     const handleChatRooms = (data: any) => {
-      // console.log("Received rooms:", data);
+      console.log("🚀 ~ handleChatRooms ~ data:", data);
       if (Array.isArray(data)) {
         setChatRooms(data);
         const formattedContacts = formatRoomsToContacts(data, user.id);
@@ -398,7 +376,7 @@ export const useChat = () => {
       if (data.room_id && data.user_id) {
         updateMessagesStatus(data.room_id, data.user_id);
       }
-      loadUnreadCount();
+      loadChatRooms();
     };
 
     const handleUnreadCount = (data: UnreadCountData) => {
@@ -478,7 +456,6 @@ export const useChat = () => {
     socket.on("chat:user-left", handleUserLeft);
 
     loadChatRooms();
-    loadUnreadCount();
 
     return () => {
       // console.log("Cleaning up socket listeners...");
@@ -500,7 +477,6 @@ export const useChat = () => {
     user,
     loadChatRooms,
     loadMessages,
-    loadUnreadCount,
     markAsRead,
     updateMessagesStatus,
     activeRoom,
@@ -534,7 +510,6 @@ export const useChat = () => {
     selectContact,
     loadChatRooms,
     markAsRead,
-    loadUnreadCount,
     closeChat,
     leaveRoom,
     startNewChat,

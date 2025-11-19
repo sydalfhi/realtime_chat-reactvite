@@ -73,7 +73,7 @@ export default function ReplyPreview({ replyingTo, onCancel }: ReplyPreviewProps
             <div className="flex justify-between items-start">
                 <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold text-gray-700 mb-1">
-                        Membalas User {replyingTo.user_id}
+                        Membalas
                     </div>
                     {renderReplyContent()}
                 </div>

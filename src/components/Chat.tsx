@@ -5,9 +5,9 @@ import ChatSidebar from './ChatSidebar'
 import MessageBubble from './MessageBubble'
 import ReplyPreview from './ReplyPreview'
 import AddContactModal from './AddContactModal'
-import { socket } from '../utils/socket'
 import { useState, useRef, useEffect } from 'react'
 import VoiceRecorder from './VoiceRecorder'
+import { formatLastActivityID } from '../utils/lastActivityFormat'
 
 // Konfigurasi jenis file yang diizinkan
 const FILE_CONFIG = {
@@ -42,7 +42,7 @@ const FILE_CONFIG = {
 }
 
 export default function Chat() {
-    const { user, logout } = useAuthStore()
+    const { user } = useAuthStore()
     const [isSendingVoice, setIsSendingVoice] = useState(false)
     const [showVoiceRecorder, setShowVoiceRecorder] = useState(false)
     const [showSidebar, setShowSidebar] = useState(false) // ✅ State untuk sidebar mobile
@@ -77,7 +77,6 @@ export default function Chat() {
         sendMessage,
         selectContact,
         markAsRead,
-        loadUnreadCount
     } = useChat()
 
     // === Tekan ESC untuk menutup chat aktif ===
@@ -270,9 +269,6 @@ export default function Chat() {
     }
 
 
-    // === Logout dari aplikasi ===
-
-
     // === Ambil nama lawan chat ===
     const getChatPartnerName = () => {
         if (!roomId || !user) return 'Unknown'
@@ -285,10 +281,9 @@ export default function Chat() {
     }
 
     // Jumlah pesan belum dibaca di room aktif
-    const currentRoomUnread = getUnreadCountForRoom(roomId)
-
+    const activeContact = contacts.find((contact) => contact.room_id === roomId);
     return (
-        <div className=" bg-white ">
+        <div className=" bg-white overflow-hidden">
             <AddContactModal
                 isOpen={showAddContactModal}
                 onClose={() => setShowAddContactModal(false)}
@@ -308,7 +303,7 @@ export default function Chat() {
                 <div className="w-6 h-6"></div> {/* Spacer untuk balance */}
             </div>
 
-            <div className="w-full mx-auto bg-white rounded-lg shadow-md flex relative min-h-[96dvh]">
+            <div className="w-full mx-auto bg-white rounded-lg shadow-md flex relative min-h-[96dvh] overflow-hidden">
                 {/* Sidebar Daftar Kontak */}
                 <div className={`
                     ${showSidebar ? 'translate-x-0' : '-translate-x-full'} 
@@ -346,39 +341,39 @@ export default function Chat() {
                         <div className="p-4 border-b border-gray-300 bg-gray-50">
                             <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-3">
+                                    {/* Avatar untuk header chat */}
+                                    <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 bg-gray-200 relative">
+                                        <img
+                                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${activeContact.user_id}&radius=50`}
+                                            alt={getChatPartnerName()}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                                const target = e.target as HTMLImageElement;
+                                                target.style.display = 'none';
+                                            }}
+                                        />
+
+                                    </div>
 
                                     <div>
                                         <h2 className="font-semibold text-gray-800">
-                                            Chat dengan {getChatPartnerName()}
+                                            {getChatPartnerName()}
                                         </h2>
                                         <p className="text-sm text-gray-500">
-                                            Room: {roomId}
+                                            {activeContact ? formatLastActivityID(activeContact.last_activity!) : "-"}
                                         </p>
+
                                     </div>
-                                    {currentRoomUnread > 0 && (
-                                        <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                                            {currentRoomUnread} unread
-                                        </span>
-                                    )}
-                                    {isMarkingRead && (
-                                        <span className="text-xs text-blue-500">
-                                            Marking as read...
-                                        </span>
-                                    )}
                                 </div>
-
                             </div>
-
                         </div>
                     ) : (
                         <></>
-                        // <div className="p-4 border-b border-gray-300 bg-gray-50 text-center text-gray-500">
-                        //     {searchQuery.trim() ? 'Pilih kontak dari hasil pencarian' : 'Pilih kontak untuk memulai percakapan'}
-                        // </div>
+
                     )}
 
                     {/* Daftar Pesan */}
-                    <div className="flex-1 overflow-y-auto p-4 bg-gray-50 h-96 messages-container">
+                    <div className="flex-1 overflow-y-auto p-4 bg-gray-50 h-96 ">
                         {isLoading ? (
                             <div className="text-center text-gray-500 mt-8">Memuat pesan...</div>
                         ) : messages.length === 0 ? (
@@ -419,6 +414,7 @@ export default function Chat() {
                                     message={msg}
                                     onReply={handleReply}
                                     currentUserId={user?.id}
+                                    activeContact={activeContact}
                                 />
                             ))
                         )}
@@ -609,14 +605,6 @@ export default function Chat() {
                 </div>
             </div>
 
-            {/* Badge Total Pesan Belum Dibaca */}
-            {/* {unreadCounts.total_unread > 0 && (
-                <div className="fixed bottom-4 right-4 bg-red-500 text-white px-3 py-2 rounded-full shadow-lg z-50">
-                    Total Belum Dibaca: {unreadCounts.total_unread}
-                </div>
-            )} */}
-
-            {/* Tombol Logout */}
 
         </div>
     )
