@@ -209,25 +209,30 @@ export default function MessageBubble({ message, onReply, currentUserId }: Messa
                         )}
                     </div>
                 )
-
             case 'audio':
                 return (
                     <div className="space-y-2">
                         {fileUrl && (
                             <div className="bg-white bg-opacity-20 rounded-lg p-3">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+                                    </svg>
+                                    <span className="text-white text-sm font-medium">Pesan Suara</span>
+                                </div>
                                 <audio controls className="w-full">
-                                    <source src={fileUrl} type={message.file_type || 'audio/mpeg'} />
+                                    <source src={fileUrl} type={message.file_type || 'audio/webm'} />
                                     Browser Anda tidak mendukung pemutar audio.
                                 </audio>
                             </div>
                         )}
-                        {message.message && message.message !== 'Mengirim audio' && (
-                            <div className="text-sm break-words">
-                                {message.message}
+                        {message.message && message.message !== '[Pesan suara]' && (
+                            <div className="text-sm break-words bg-white bg-opacity-10 p-2 rounded">
+                                <strong>Transkrip:</strong> {message.message}
                             </div>
                         )}
                     </div>
-                )
+                );
 
             default: // text
                 return (

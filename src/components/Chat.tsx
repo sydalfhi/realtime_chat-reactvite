@@ -1,6 +1,4 @@
 // src\components\Chat.tsx
-
-
 import { useChat } from '../hooks/useChat'
 import { useAuthStore } from '../stores/authStore'
 import ChatSidebar from './ChatSidebar'
@@ -9,6 +7,7 @@ import ReplyPreview from './ReplyPreview'
 import AddContactModal from './AddContactModal'
 import { socket } from '../utils/socket'
 import { useState, useRef, useEffect } from 'react'
+import VoiceRecorder from './VoiceRecorder';
 
 // File type configuration
 const FILE_CONFIG = {
@@ -44,7 +43,7 @@ const FILE_CONFIG = {
 
 export default function Chat() {
     const { user, logout } = useAuthStore()
-
+    const [isSendingVoice, setIsSendingVoice] = useState(false);
     // State for file upload
     const [filePreview, setFilePreview] = useState<{
         file: File;
@@ -295,6 +294,38 @@ export default function Chat() {
 
     const currentRoomUnread = getUnreadCountForRoom(roomId);
 
+    // sound
+    const handleSendVoice = async (audioData: {
+        file: string;
+        file_name: string;
+        file_type: string;
+        transcript: string;
+    }) => {
+        if (!roomId) return;
+
+        setIsSendingVoice(true);
+        try {
+            console.log("🎤 Sending voice message:", {
+                fileName: audioData.file_name,
+                fileType: audioData.file_type,
+                transcript: audioData.transcript
+            });
+
+            // Kirim sebagai file audio dengan transkrip sebagai message
+            await sendMessage(audioData.transcript, {
+                file: audioData.file,
+                file_name: audioData.file_name,
+                file_type: audioData.file_type
+            });
+
+        } catch (error) {
+            console.error('Error sending voice message:', error);
+            alert('Gagal mengirim pesan suara');
+        } finally {
+            setIsSendingVoice(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-100 p-4">
             <AddContactModal
@@ -451,72 +482,73 @@ export default function Chat() {
                             />
 
                             {/* Send Message */}
-                            <div className="p-4 border-t border-gray-300">
-                                <div className="flex gap-2">
-                                    {/* File Input Button */}
-                                    <div className="relative">
-                                        <input
-                                            type="file"
-                                            ref={fileInputRef}
-                                            onChange={handleFileSelect}
-                                            accept={Object.values(FILE_CONFIG).flatMap(config => config.types).join(',')}
-                                            className="hidden"
-                                            disabled={isUploading}
-                                        />
-                                        <button
-                                            onClick={() => fileInputRef.current?.click()}
-                                            disabled={isUploading}
-                                            className="bg-gray-500 text-white p-2 rounded-md hover:bg-gray-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                                            title="Lampirkan file"
-                                        >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                                            </svg>
-                                        </button>
-                                    </div>
 
+                            <div className="flex gap-2">
+                                {/* File Input Button */}
+                                <div className="relative">
                                     <input
-                                        type="text"
-                                        value={message}
-                                        onChange={(e) => setMessage(e.target.value)}
-                                        onKeyPress={(e) => {
-                                            if (e.key == 'Enter') {
-                                                handleSendMessage()
-                                            }
-                                        }}
-                                        placeholder={replyingTo ? `Balas pesan...` : "Ketik pesan..."}
-                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        disabled={isUploading}
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleFileSelect}
+                                        accept={Object.values(FILE_CONFIG).flatMap(config => config.types).join(',')}
+                                        className="hidden"
+                                        disabled={isUploading || isSendingVoice}
                                     />
                                     <button
-                                        onClick={handleSendMessage}
-                                        disabled={(!message.trim() && !filePreview) || isUploading}
-                                        className="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors flex items-center gap-2"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={isUploading || isSendingVoice}
+                                        className="bg-gray-500 text-white p-2 rounded-md hover:bg-gray-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                                        title="Lampirkan file"
                                     >
-                                        {isUploading ? (
-                                            <>
-                                                <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                </svg>
-                                                Uploading...
-                                            </>
-                                        ) : filePreview ? (
-                                            'Kirim File'
-                                        ) : replyingTo ? (
-                                            'Balas'
-                                        ) : (
-                                            'Kirim'
-                                        )}
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                        </svg>
                                     </button>
                                 </div>
 
-                                {/* File type hints */}
-                                <div className="mt-2 text-xs text-gray-500 flex flex-wrap gap-4">
-                                    <span>📷 Gambar: JPEG, PNG, GIF (max 5MB)</span>
-                                    <span>📄 Dokumen: PDF, DOC, XLS, TXT (max 10MB)</span>
-                                    <span>🎵 Media: MP3, WAV, MP4 (max 25MB)</span>
-                                </div>
+                                {/* Voice Recorder Button */}
+                                <VoiceRecorder
+                                    onSendVoice={handleSendVoice}
+                                    disabled={isUploading || !roomId}
+                                />
+
+                                <input
+                                    type="text"
+                                    value={message}
+                                    onChange={(e) => setMessage(e.target.value)}
+                                    onKeyPress={(e) => {
+                                        if (e.key == 'Enter') {
+                                            handleSendMessage()
+                                        }
+                                    }}
+                                    placeholder={replyingTo ? `Balas pesan...` : "Ketik pesan..."}
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    disabled={isUploading || isSendingVoice}
+                                />
+
+                                <button
+                                    onClick={handleSendMessage}
+                                    disabled={(!message.trim() && !filePreview) || isUploading || isSendingVoice}
+                                    className="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors flex items-center gap-2"
+                                >
+                                    {isUploading ? (
+                                        <>
+                                            <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Uploading...
+                                        </>
+                                    ) : isSendingVoice ? (
+                                        'Mengirim Suara...'
+                                    ) : filePreview ? (
+                                        'Kirim File'
+                                    ) : replyingTo ? (
+                                        'Balas'
+                                    ) : (
+                                        'Kirim'
+                                    )}
+                                </button>
                             </div>
                         </>
                     )}
