@@ -3,12 +3,14 @@ import { useAuthStore } from './stores/authStore'
 import Chat from './components/Chat'
 import LoginPage from './pages/login'
 import RegisterPage from './pages/register'
-
+import SpeechRecognition from 'react-speech-recognition';
 
 
 function App() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
-
+  if (!SpeechRecognition.browserSupportsSpeechRecognition()) {
+    console.warn('Browser tidak mendukung Speech Recognition');
+  }
   return (
     <Router>
       <div className="App">
