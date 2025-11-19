@@ -194,26 +194,12 @@ export const useChat = () => {
     socket.connect();
 
     // Di hooks/useChat.ts - PERBAIKI handleChatReceive
-    // Di hooks/useChat.ts - PERBAIKI handleChatReceive
     const handleChatReceive = (data: Message & { temporaryId?: string }) => {
-      console.log("📨 Received message:", {
-        id: data.id,
-        temporaryId: data.temporaryId,
-        room_id: data.room_id,
-        from_user: data.user_id,
-        to_user: user.id,
-        is_temporary: data.temporary,
-        message_type: data.message_type,
-      });
-
       setMessages((prev) => {
         // ✅ FIX: Jika ini adalah saved message dengan temporaryId, replace temporary message
-        if (data.temporaryId && !data.temporary) {
-          console.log(
-            `🔄 Replacing temporary message ${data.temporaryId} with saved message ${data.id}`
-          );
+        if (data.temporaryId) {
           return prev.map((msg) =>
-            msg.temporary && msg.id === data.temporaryId
+            msg.temporary && msg.id == data.temporaryId
               ? {
                   ...data,
                   isSending: false,
@@ -226,29 +212,9 @@ export const useChat = () => {
 
         // ✅ FIX: Deteksi duplicate messages
         const isDuplicate = prev.some((msg) => {
-          // Jika ada ID yang sama
-          if (msg.id && data.id && msg.id === data.id) {
+          if (msg.id && data.id && msg.id == data.id) return true;
+          if (msg.temporary && data.temporary && msg.user_id == data.user_id)
             return true;
-          }
-
-          // Jika temporary message dengan temporaryId yang sama
-          if (msg.temporary && data.temporary && msg.id === data.id) {
-            return true;
-          }
-
-          // Jika message content dan user sama dalam waktu dekat
-          if (
-            msg.message === data.message &&
-            msg.user_id === data.user_id &&
-            msg.room_id === data.room_id
-          ) {
-            const timeDiff = Math.abs(
-              new Date(msg.created_at).getTime() -
-                new Date(data.created_at).getTime()
-            );
-            return timeDiff < 5000; // 5 detik tolerance
-          }
-
           return false;
         });
 
@@ -259,20 +225,6 @@ export const useChat = () => {
 
         // ✅ FIX: Handle new message (baik teks maupun gambar)
         console.log("➕ Adding new message to state");
-
-        // Handle parent message
-        if (data.parent_id) {
-          const parentMessage = prev.find((msg) => msg.id === data.parent_id);
-          if (parentMessage) {
-            const enhancedData = {
-              ...data,
-              parent_message: parentMessage.message,
-              parent_user_id: parentMessage.user_id,
-            };
-            return [...prev, enhancedData];
-          }
-        }
-
         return [...prev, data];
       });
 
