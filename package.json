@@ -11,9 +11,12 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.17",
+    "audio-recorder-polyfill": "^0.4.1",
     "react": "^19.2.0",
+    "react-audio-voice-recorder": "^2.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.9.5",
+    "react-speech-recognition": "^4.0.1",
     "socket.io-client": "^4.8.1",
     "tailwindcss": "^4.1.17",
     "zustand": "^5.0.8"
