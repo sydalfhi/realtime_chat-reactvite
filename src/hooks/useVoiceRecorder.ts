@@ -10,22 +10,27 @@ export const useVoiceRecorder = () => {
   const [audioUrl, setAudioUrl] = useState<string>("");
   const [recordingTime, setRecordingTime] = useState(0);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [manualTranscript, setManualTranscript] = useState(""); // ✅ State manual untuk transcript
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout>();
 
   // Gunakan react-speech-recognition
   const {
-    transcript,
+    transcript: speechTranscript,
     listening,
     resetTranscript,
     browserSupportsSpeechRecognition,
   } = useSpeechRecognition();
 
+  // Gabungkan transcript dari speech recognition dan manual edit
+  const transcript = manualTranscript || speechTranscript;
+
   const startRecording = async () => {
     try {
       // Reset transcript sebelumnya
       resetTranscript();
+      setManualTranscript(""); // Reset manual transcript juga
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -100,6 +105,7 @@ export const useVoiceRecorder = () => {
     setAudioUrl("");
     setRecordingTime(0);
     resetTranscript();
+    setManualTranscript(""); // Reset manual transcript
   };
 
   // Convert blob to base64
@@ -122,14 +128,17 @@ export const useVoiceRecorder = () => {
 
     try {
       // Jika speech recognition berhasil dan ada transcript
-      if (transcript && transcript.trim().length > 0) {
-        console.log("✅ Using speech recognition transcript:", transcript);
-        return transcript.trim();
+      if (speechTranscript && speechTranscript.trim().length > 0) {
+        console.log(
+          "✅ Using speech recognition transcript:",
+          speechTranscript
+        );
+        return speechTranscript.trim();
       }
 
       // Fallback: Manual input
       console.log("⚠️ No speech recognition result, using manual input");
-      const manualTranscript = await new Promise<string>((resolve) => {
+      return new Promise((resolve) => {
         // Untuk production, bisa ganti dengan API external seperti:
         // - Google Cloud Speech-to-Text
         // - OpenAI Whisper
@@ -137,12 +146,10 @@ export const useVoiceRecorder = () => {
 
         const userInput = prompt(
           "Transkripsi otomatis tidak tersedia. Silakan ketik transkripsi pesan suara Anda:",
-          transcript || ""
+          manualTranscript || speechTranscript || ""
         );
         resolve(userInput || "🎤 Pesan suara");
       });
-
-      return manualTranscript;
     } catch (error) {
       console.error("Transcription error:", error);
       return "🎤 Pesan suara";
@@ -151,14 +158,11 @@ export const useVoiceRecorder = () => {
     }
   };
 
-  // Manual edit transcript
-  const editTranscript = useCallback(() => {
-    const newTranscript = prompt("Edit transkripsi:", transcript);
-    if (newTranscript !== null) {
-      resetTranscript();
-      // Kita tidak bisa langsung set transcript, jadi kita handle di prepareAudioForSend
-    }
-  }, [transcript, resetTranscript]);
+  // Manual edit transcript - FIXED!
+  const editTranscript = useCallback((newTranscript: string) => {
+    console.log("📝 Editing transcript:", newTranscript);
+    setManualTranscript(newTranscript);
+  }, []);
 
   // Prepare audio untuk dikirim
   const prepareAudioForSend = async (): Promise<{
@@ -187,7 +191,7 @@ export const useVoiceRecorder = () => {
     audioBlob,
     audioUrl,
     recordingTime,
-    transcript,
+    transcript, // ✅ Sekarang ini gabungan dari speech + manual
     isTranscribing,
     listening,
     browserSupportsSpeechRecognition,
@@ -195,7 +199,7 @@ export const useVoiceRecorder = () => {
     stopRecording,
     cancelRecording,
     prepareAudioForSend,
-    editTranscript,
+    editTranscript, // ✅ Fungsi ini sekarang bisa di-set
     hasRecording: !!audioBlob,
   };
 };
