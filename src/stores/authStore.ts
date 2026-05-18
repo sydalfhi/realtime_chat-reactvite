@@ -40,7 +40,31 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: true,
         });
       },
+      register: async (userData: {
+        email: string;
+        username: string;
+        password: string;
+        full_name: string;
+      }): Promise<boolean> => {
+        try {
+          const response = await fetch(
+            "https://payroll-trial.profaskes.id/panel/auth/register",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(userData),
+            }
+          );
 
+          const data = await response.json();
+          return data.success == true;
+        } catch (error) {
+          console.error("Registration failed:", error);
+          return false;
+        }
+      },
       logout: () => {
         set({
           user: null,
@@ -141,32 +165,6 @@ export const useAuthStore = create<AuthState>()(
           return false;
         } catch (error) {
           console.error("Get current user failed:", error);
-          return false;
-        }
-      },
-
-      register: async (userData: {
-        email: string;
-        username: string;
-        password: string;
-        full_name: string;
-      }): Promise<boolean> => {
-        try {
-          const response = await fetch(
-            "https://payroll-trial.profaskes.id/panel/auth/register",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(userData),
-            }
-          );
-
-          const data = await response.json();
-          return data.success == true;
-        } catch (error) {
-          console.error("Registration failed:", error);
           return false;
         }
       },
